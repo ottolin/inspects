@@ -1,0 +1,2 @@
+defmodule Inspects do
+end
