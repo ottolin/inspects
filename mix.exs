@@ -5,6 +5,7 @@ defmodule Inspects.Mixfile do
     [app: :inspects,
      version: "0.0.1",
      elixir: "~> 1.0-dev",
+     escript: [main_module: Inspects],
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      deps: deps]
