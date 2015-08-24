@@ -14,7 +14,7 @@ defmodule Parser.Ts do
   # although we wont use it that way in the inspects module
   defp parse_ts(<<0x47, ts_data::binary-size(187), rest::binary>>, tsfile) do
     # sync byte matched, doing real ts parsing
-    updated_tsfile = parse_data(ts_data, tsfile)
+    updated_tsfile = parse_ts_187(ts_data, tsfile)
     parse_ts(rest, updated_tsfile)
   end
 
@@ -81,7 +81,7 @@ defmodule Parser.Ts do
     tsfile
   end
 
-  defp parse_data(<<_tei::1, pusi::1, _priority::1, pid::13, _::binary>> = data, tsfile) when is_binary(data) do
+  defp parse_ts_187(<<_tei::1, pusi::1, _priority::1, pid::13, _::binary>> = data, tsfile) when is_binary(data) do
     tsfile1 = parse_ts_header(data, tsfile)
     parse_data(get_type(pid, tsfile1), pid, pusi, data, tsfile1)
   end
@@ -98,20 +98,22 @@ defmodule Parser.Ts do
     |> Parser.Psi.pmt(pid, tsfile)
   end
 
-  defp parse_data(:data, pid, pusi, data, tsfile) do
-    parse_pes_header(pid, pusi, data, tsfile)
-  end
-
-  defp parse_pes_header(_pid, 0, _data, tsfile) do
+  defp parse_data(:data, pid, 0, data, tsfile) do
     # no pusi, just ignore as we only care header now
     tsfile
   end
 
-  defp parse_pes_header(pid, 1, data, tsfile) do
-    <<0x00, 0x00, 0x01, _stream_id::8, _pes_len::16, pes_header_and_rest::binary>> = payload(data)
-    {pts, dts} = get_pts_dts(pes_header_and_rest)
+  defp parse_data(:data, pid, 1, data, tsfile) do
+    parse_pes_header(pid, 1, payload(data), tsfile)
+  end
 
+  defp parse_pes_header(pid, 1, <<0x00, 0x00, 0x01, _stream_id::8, _pes_len::16, pes_header_and_rest::binary>>, tsfile) do
+    {pts, dts} = get_pts_dts(pes_header_and_rest)
     #IO.inspect {pid, pts, dts}
+    tsfile
+  end
+
+  defp parse_pes_header(pid, 1, _no_pes_header, tsfile) when is_binary(_no_pes_header)do
     tsfile
   end
 
