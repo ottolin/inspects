@@ -46,24 +46,32 @@ defmodule Parser.Ts do
     end
   end
 
-  defp parse_data(<<_::3, pid::13, _::binary>> = data, tsfile) when is_binary(data) do
-    parse_data(get_type(pid, tsfile), pid, data, tsfile)
+  defp parse_data(<<_tei::1, pusi::1, _priority::1, pid::13, _::binary>> = data, tsfile) when is_binary(data) do
+    parse_data(get_type(pid, tsfile), pid, pusi, data, tsfile)
   end
 
-  defp parse_data(:pat, 0, data, tsfile) do
+  defp parse_data(:pat, 0, _pusi, data, tsfile) do
     data
     |> payload
     |> Parser.Psi.pat(tsfile)
   end
 
-  defp parse_data(:pmt, pid, data, tsfile) do
+  defp parse_data(:pmt, pid, _pusi, data, tsfile) do
     data
     |> payload
     |> Parser.Psi.pmt(pid, tsfile)
   end
 
-  defp parse_data(:data, pid, data, tsfile) do
+  defp parse_data(:data, pid, pusi, data, tsfile) do
     tsfile
+  end
+
+  defp parse_pes_header(_pid, 0, _data, tsfile) do
+    # no pusi, just ignore as we only care header now
+    tsfile
+  end
+
+  defp parse_pes_header(pid, 1, _TODO, tsfile) do
   end
 
 end

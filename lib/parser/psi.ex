@@ -16,7 +16,7 @@ defmodule Section do
   def parse(<<table_id::8, 1::1, private_indicator::1, reserved1::2,
             section_length::12, table_id_ext::16, reserved2::2, version::5, cur_next_ind::1,
             section_num::8, last_section_num::8, rest::binary>>) do
-    
+
     # section_syntax_indicator == 1, long section
     payload_len = section_length - 9;
     <<payload::binary-size(payload_len), crc32::32, _::binary>> = rest
@@ -40,7 +40,7 @@ defmodule Section do
 
   def parse(<<table_id::8, 0::1, private_indicator::1, reserved1::2,
             section_length::12, payload::binary-size(section_length)>>) do
-    
+
     # section_syntax_indicator == 0, short section
     %Section{
       table_id: table_id,
@@ -74,7 +74,7 @@ defmodule Parser.Psi do
     # TODO: handling section > 1 pkt
     <<_prev_section::binary-size(ptr_field), section_bytes::binary>> = rest
     section = Section.parse(section_bytes)
-    
+
     <<_::3, pcr_pid::13, _::4, pgm_info_len::12, pgm_desc::binary-size(pgm_info_len), stream_info_bytes::binary>> = section.payload
     updated_streams = get_stream(stream_info_bytes)
     |> Enum.filter(fn {pid, stream_type} ->
