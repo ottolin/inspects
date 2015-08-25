@@ -1,5 +1,4 @@
 defmodule Parser.Ts do
-  use Bitwise
 
   def parse(data, %TsFile{ts_residue: <<>>} = tsfile) when is_binary(data) do
     # No residue left last time. directly calling ts parsing
@@ -63,10 +62,11 @@ defmodule Parser.Ts do
     {pcr} = parse_adap_field (adap)
     tsfile_rv = tsfile
     if pcr != -1 do
+      cur_pcr = {tsfile.pos, pcr}
       programs = tsfile.programs
       |> Enum.map(fn p ->
                      cond do
-                       p.pcr_pid == pid -> %{p| pcr_list: [{tsfile.pos, pcr} | p.pcr_list]}
+                       p.pcr_pid == pid -> %{p| cur_pcr: cur_pcr, pcr_list: [ cur_pcr | p.pcr_list]}
                        True -> p
                      end
                   end)
@@ -97,7 +97,7 @@ defmodule Parser.Ts do
     |> Parser.Psi.pmt(pid, tsfile)
   end
 
-  defp parse_data(:data, pid, 0, data, tsfile) do
+  defp parse_data(:data, _pid, 0, _data, tsfile) do
     # no pusi, just ignore as we only care header now
     tsfile
   end
@@ -107,39 +107,27 @@ defmodule Parser.Ts do
   end
 
   defp parse_pes_header(pid, 1, <<0x00, 0x00, 0x01, _stream_id::8, _pes_len::16, pes_header_and_rest::binary>>, tsfile) do
-    {pts, dts} = get_pts_dts(pes_header_and_rest)
-    #IO.inspect {pid, pts, dts}
+    stream = Util.get_stream(pid, tsfile)
+    rv = tsfile
+    if stream != nil do
+      {pts, dts} = Parser.Pes.pts_dts(pes_header_and_rest)
+      #IO.inspect {pid, pts, dts}
+      {pcr_pos, pcr} = Util.get_cur_pcr_for_stream(pid, tsfile)
+      updated_streams = Enum.map(tsfile.streams,
+        fn s ->
+          cond do
+            (s.pid == pid) -> %{s | timeinfo: [{tsfile.pos, pcr_pos, pcr, pts, dts} | s.timeinfo]}
+            True -> s
+          end
+        end)
+
+      rv = %{tsfile | streams: updated_streams}
+    end
+    rv
+  end
+
+  defp parse_pes_header(_pid, 1, _no_pes_header, tsfile) when is_binary(_no_pes_header)do
     tsfile
   end
 
-  defp parse_pes_header(pid, 1, _no_pes_header, tsfile) when is_binary(_no_pes_header)do
-    tsfile
-  end
-
-  defp get_pts_dts(<<_marker::2, _scramble::2, _priority::1, _dai::1, _copyright::1, _original::1,
-                   # pts = 1 and dts =1
-                   1::1, 1::1, _escr::1, _esrate::1, _dsm::1, _addcopy::1, _crc::1, _ext::1, _pes_header_len::8,
-                   # pts field
-                   _::4, pts32_30::3, _::1, pts29_15::15, _::1, pts14_00::15, _::1,
-                   # dts field
-                   _::4, dts32_30::3, _::1, dts29_15::15, _::1, dts14_00::15, _::1,
-                   _rest::binary >>) do
-    pts = (pts32_30 <<< 30) + (pts29_15 <<< 15) + pts14_00
-    dts = (dts32_30 <<< 30) + (dts29_15 <<< 15) + dts14_00
-    {pts, dts}
-  end
-
-  defp get_pts_dts(<<_marker::2, _scramble::2, _priority::1, _dai::1, _copyright::1, _original::1,
-                   # pts = 1 and dts =0
-                   1::1, 0::1, _escr::1, _esrate::1, _dsm::1, _addcopy::1, _crc::1, _ext::1, _pes_header_len::8,
-                   # pts field
-                   _::4, pts32_30::3, _::1, pts29_15::15, _::1, pts14_00::15, _::1,
-                   _rest::binary >>) do
-    pts = (pts32_30 <<< 30) + (pts29_15 <<< 15) + pts14_00
-    {pts, -1}
-  end
-
-  defp get_pts_dts(_) do
-    {-1, -1}
-  end
 end
