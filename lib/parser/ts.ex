@@ -14,7 +14,7 @@ defmodule Parser.Ts do
   # although we wont use it that way in the inspects module
   defp parse_ts(<<0x47, ts_data::binary-size(187), rest::binary>>, tsfile) do
     # sync byte matched, doing real ts parsing
-    updated_tsfile = parse_ts_187(ts_data, tsfile)
+    updated_tsfile = parse_ts_187(ts_data, %{tsfile | pos: tsfile.pos + 1})
     parse_ts(rest, updated_tsfile)
   end
 
@@ -63,11 +63,10 @@ defmodule Parser.Ts do
     {pcr} = parse_adap_field (adap)
     tsfile_rv = tsfile
     if pcr != -1 do
-      IO.puts pcr
       programs = tsfile.programs
       |> Enum.map(fn p ->
                      cond do
-                       p.pcr_pid == pid -> %{p| pcr_list: [pcr | p.pcr_list]}
+                       p.pcr_pid == pid -> %{p| pcr_list: [{tsfile.pos, pcr} | p.pcr_list]}
                        True -> p
                      end
                   end)

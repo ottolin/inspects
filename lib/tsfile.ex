@@ -3,7 +3,8 @@ defmodule TsFile do
   ts_residue: <<>>,
   pat_num: 0,
   programs: [],
-  streams: []
+  streams: [],
+  pos: 0
 end
 
 defmodule TsProgram do
