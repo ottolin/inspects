@@ -55,19 +55,11 @@ end
 
 defmodule Parser.Psi do
 
-  def pat(<<ptr_field::8, rest::binary>>, tsfile) do
+  def pat(<<ptr_field::8, rest::binary>>) do
     # TODO: handling section > 1 pkt
     <<_prev_section::binary-size(ptr_field), section_bytes::binary>> = rest
     section = Section.parse(section_bytes)
-    updated_programs = get_pgm(section.payload)
-    |> Enum.filter(fn {pid, _pgm_num} ->
-                     not pid in Enum.map(tsfile.programs, fn pgm -> pgm.pid end)
-                   end)
-    |> Enum.reduce(tsfile.programs,
-                   fn ({pid, pgm_num}, acc) -> [%TsProgram{pid: pid, pgm_num: pgm_num} | acc] end
-                  )
-
-    %{tsfile | pat_num: tsfile.pat_num+1, programs: updated_programs}
+    get_pgm(section.payload)
   end
 
   def pmt(<<ptr_field::8, rest::binary>>, pmt_pid, tsfile) do

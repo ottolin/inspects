@@ -7,6 +7,21 @@ defmodule Util do
     |> get_pcr_from_pgm
   end
 
+  def get_stream(stream_pid, tsfile) do
+    Enum.find(tsfile.streams, fn s -> s.pid == stream_pid end)
+  end
+
+  def get_updated_programs(programs, tsfile) do
+    # programs is a list: [{pid, pgm_num}]
+    programs
+    |> Enum.filter(fn {pid, _pgm_num} ->
+      not pid in Enum.map(tsfile.programs, fn pgm -> pgm.pid end)
+    end)
+    |> Enum.reduce(tsfile.programs,
+      fn ({pid, pgm_num}, acc) -> [%TsProgram{pid: pid, pgm_num: pgm_num} | acc] end
+    )
+  end
+
   defp get_pcr_from_pgm(nil) do
     {-1, -1}
   end
@@ -31,7 +46,4 @@ defmodule Util do
     Enum.find(tsfile.programs, fn p -> p.pid == pmt_pid end)
   end
 
-  def get_stream(stream_pid, tsfile) do
-    Enum.find(tsfile.streams, fn s -> s.pid == stream_pid end)
-  end
 end

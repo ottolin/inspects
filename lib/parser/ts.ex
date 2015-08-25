@@ -86,9 +86,12 @@ defmodule Parser.Ts do
   end
 
   defp parse_data(:pat, 0, _pusi, data, tsfile) do
-    data
+    updated_programs = data
     |> payload
-    |> Parser.Psi.pat(tsfile)
+    |> Parser.Psi.pat
+    |> Util.get_updated_programs(tsfile)
+
+    %{tsfile | pat_num: tsfile.pat_num+1, programs: updated_programs}
   end
 
   defp parse_data(:pmt, pid, _pusi, data, tsfile) do
