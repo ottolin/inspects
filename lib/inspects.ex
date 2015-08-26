@@ -29,7 +29,6 @@ defmodule Inspects do
 
     Printer.console_summary(final_info)
     stat_folder = Path.join(Path.dirname(tsfile.fname), Path.basename(tsfile.fname) <> ".stat")
-    File.rm_rf(stat_folder)
     File.mkdir_p(stat_folder)
     Printer.write_statistics(final_info, stat_folder)
   end
