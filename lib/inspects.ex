@@ -24,9 +24,13 @@ defmodule Inspects do
 
     [final_info] = File.stream!(tsfile.fname, [:read], 188 * 5000) # taking in 188 * 5k per read
     |> Stream.scan(tsfile, &Parser.Ts.parse/2)
-    |> Stream.take(-1)
+    |> Stream.take(-1) # we are just interested in the last processing result
     |> Enum.to_list
 
-    IO.inspect final_info
+    Printer.console_summary(final_info)
+    stat_folder = Path.join(Path.dirname(tsfile.fname), Path.basename(tsfile.fname) <> ".stat")
+    File.rm_rf(stat_folder)
+    File.mkdir_p(stat_folder)
+    Printer.write_statistics(final_info, stat_folder)
   end
 end

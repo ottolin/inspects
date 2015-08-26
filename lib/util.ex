@@ -41,6 +41,10 @@ defmodule Util do
     {updated_streams, updated_programs}
   end
 
+  def stream_to_string(s) do
+    "\t\tStream: " <> Integer.to_string(s.pid) <> ", type: " <> Atom.to_string(s.type) <> "\n"
+  end
+
   defp get_pcr_from_pgm(nil) do
     {-1, -1}
   end
