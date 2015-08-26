@@ -62,29 +62,14 @@ defmodule Parser.Psi do
     get_pgm(section.payload)
   end
 
-  def pmt(<<ptr_field::8, rest::binary>>, pmt_pid, tsfile) do
+  def pmt(<<ptr_field::8, rest::binary>>) do
     # TODO: handling section > 1 pkt
     <<_prev_section::binary-size(ptr_field), section_bytes::binary>> = rest
     section = Section.parse(section_bytes)
 
     <<_::3, pcr_pid::13, _::4, pgm_info_len::12, pgm_desc::binary-size(pgm_info_len), stream_info_bytes::binary>> = section.payload
-    updated_streams = get_stream(stream_info_bytes)
-    |> Enum.filter(fn {pid, stream_type} ->
-                     not pid in Enum.map(tsfile.streams, fn stm -> stm.pid end)
-                   end)
-    |> Enum.reduce(tsfile.streams,
-                   fn ({pid, stream_type}, acc) -> [%TsStream{pid: pid, pmt_pid: pmt_pid, type: stream_type} | acc] end
-                  )
+    {pcr_pid, get_stream(stream_info_bytes)}
 
-    updated_programs = Enum.map(tsfile.programs,
-      fn p ->
-        cond do
-          (p.pid == pmt_pid) -> %{p | pcr_pid: pcr_pid}
-          True -> p
-        end
-      end)
-
-    %{tsfile | programs: updated_programs, streams: updated_streams}
   end
 
   defp get_stream_type(type) do

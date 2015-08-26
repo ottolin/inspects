@@ -22,6 +22,25 @@ defmodule Util do
     )
   end
 
+  def get_updated_streams_and_programs({pcr_pid, stream_list}, pmt_pid, tsfile) do
+    updated_streams = stream_list
+    |> Enum.filter(fn {pid, stream_type} ->
+      not pid in Enum.map(tsfile.streams, fn stm -> stm.pid end)
+    end)
+    |> Enum.reduce(tsfile.streams,
+      fn ({pid, stream_type}, acc) -> [%TsStream{pid: pid, pmt_pid: pmt_pid, type: stream_type} | acc] end
+    )
+
+    updated_programs = Enum.map(tsfile.programs,
+      fn p ->
+        cond do
+          (p.pid == pmt_pid) -> %{p | pcr_pid: pcr_pid}
+          True -> p
+        end
+      end)
+    {updated_streams, updated_programs}
+  end
+
   defp get_pcr_from_pgm(nil) do
     {-1, -1}
   end

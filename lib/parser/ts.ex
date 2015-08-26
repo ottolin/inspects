@@ -95,9 +95,12 @@ defmodule Parser.Ts do
   end
 
   defp parse_data(:pmt, pid, _pusi, data, tsfile) do
-    data
+    {updated_streams, updated_programs} = data
     |> payload
-    |> Parser.Psi.pmt(pid, tsfile)
+    |> Parser.Psi.pmt
+    |> Util.get_updated_streams_and_programs(pid, tsfile)
+
+    %{tsfile | programs: updated_programs, streams: updated_streams}
   end
 
   defp parse_data(:data, _pid, 0, _data, tsfile) do
