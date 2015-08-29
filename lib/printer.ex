@@ -5,6 +5,9 @@ defmodule Printer do
   end
 
   def write_statistics(tsfile, output_folder) do
+    # Writing stream summary
+    summary = to_string tsfile;
+    File.write(Path.join(output_folder, "summary.log"), summary)
     # Writing stream stat
     Enum.each(tsfile.streams,
       fn s ->
