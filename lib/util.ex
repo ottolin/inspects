@@ -24,11 +24,11 @@ defmodule Util do
 
   def get_updated_streams_and_programs({pcr_pid, stream_list}, pmt_pid, tsfile) do
     updated_streams = stream_list
-    |> Enum.filter(fn {pid, stream_type} ->
+    |> Enum.filter(fn {pid, _stream_type} ->
       not pid in Enum.map(tsfile.streams, fn stm -> stm.pid end)
     end)
     |> Enum.reduce(tsfile.streams,
-      fn ({pid, stream_type}, acc) -> [%TsStream{pid: pid, pmt_pid: pmt_pid, type: stream_type} | acc] end
+      fn ({pid, stream_type}, acc) -> [%TsStream{pid: pid, pmt_pid: pmt_pid, type: stream_type, es_process_fn: Parser.Probe.get_parser(stream_type)} | acc] end
     )
 
     updated_programs = Enum.map(tsfile.programs,

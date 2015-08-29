@@ -27,4 +27,11 @@ defmodule Parser.Pes do
   def pts_dts(_) do
     {-1, -1}
   end
+
+  def payload(<<_marker::2, _scramble::2, _priority::1, _dai::1, _copyright::1, _original::1,
+              _pts::1, _dts::1, _escr::1, _esrate::1, _dsm::1, _addcopy::1, _crc::1, _ext::1,
+              pes_header_len::8, _header::binary-size(pes_header_len), payload::binary >>) do
+    payload
+  end
+
 end

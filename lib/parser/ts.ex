@@ -26,6 +26,11 @@ defmodule Parser.Ts do
     %{tsfile | ts_residue: tspkt_smaller_than_188}
   end
 
+  defp parse_ts_187(<<_tei::1, pusi::1, _priority::1, pid::13, _::binary>> = data, tsfile) when is_binary(data) do
+    tsfile1 = parse_ts_header(data, tsfile)
+    parse_data(get_type(pid, tsfile1), pid, pusi, data, tsfile1)
+  end
+
   # function to extract ts payload
   defp payload(<<_::18, 0::1, 1::1, _cc::4, payload::binary>>) do
     payload
@@ -73,16 +78,12 @@ defmodule Parser.Ts do
       tsfile_rv = %{tsfile | programs: programs}
     end
 
+    # TODO: cc error checking
     tsfile_rv
   end
 
   defp parse_ts_header(_, tsfile) do
     tsfile
-  end
-
-  defp parse_ts_187(<<_tei::1, pusi::1, _priority::1, pid::13, _::binary>> = data, tsfile) when is_binary(data) do
-    tsfile1 = parse_ts_header(data, tsfile)
-    parse_data(get_type(pid, tsfile1), pid, pusi, data, tsfile1)
   end
 
   defp parse_data(:pat, 0, _pusi, data, tsfile) do
@@ -103,9 +104,22 @@ defmodule Parser.Ts do
     %{tsfile | programs: updated_programs, streams: updated_streams}
   end
 
-  defp parse_data(:data, _pid, 0, _data, tsfile) do
-    # no pusi, just ignore as we only care header now
-    tsfile
+  defp parse_data(:data, pid, 0, data, tsfile) do
+    # no pusi, update pes stream buffer
+    stream = Util.get_stream(pid, tsfile)
+    rv = tsfile
+    if stream != nil && byte_size(stream.pes_buf) > 0 do
+      updated_streams = Enum.map(tsfile.streams,
+        fn s ->
+          cond do
+            (s.pid == pid) -> %{s | pes_buf: s.pes_buf <> payload(data)}
+            True -> s
+          end
+        end)
+
+      rv = %{tsfile | streams: updated_streams}
+    end
+    rv
   end
 
   defp parse_data(:data, pid, 1, data, tsfile) do
@@ -119,10 +133,15 @@ defmodule Parser.Ts do
       {pts, dts} = Parser.Pes.pts_dts(pes_header_and_rest)
       #IO.inspect {pid, pts, dts}
       {pcr_pos, pcr} = Util.get_cur_pcr_for_stream(pid, tsfile)
+      stream.es_process_fn.(stream.pes_buf)
+      stream = %{stream | timeinfo: [{tsfile.pos, pcr_pos, pcr, pts, dts} | stream.timeinfo],
+                          # Reset pse_buf as we have new pes start
+                          pes_buf: Parser.Pes.payload(pes_header_and_rest)}
+
       updated_streams = Enum.map(tsfile.streams,
         fn s ->
           cond do
-            (s.pid == pid) -> %{s | timeinfo: [{tsfile.pos, pcr_pos, pcr, pts, dts} | s.timeinfo]}
+            (s.pid == pid) -> stream
             True -> s
           end
         end)
@@ -132,7 +151,9 @@ defmodule Parser.Ts do
     rv
   end
 
-  defp parse_pes_header(_pid, 1, _no_pes_header, tsfile) when is_binary(_no_pes_header)do
+  defp parse_pes_header(_pid, 1, _no_pes_header, tsfile) do
+    # Payload start but no pes header.
+    # Section handling?
     tsfile
   end
 

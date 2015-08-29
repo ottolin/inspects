@@ -55,5 +55,8 @@ defmodule TsStream do
   pmt_pid: -1,
   type: :unknown, # :unknown, :aac, :m1l2, :ac3, :dolbye, :mpeg2v, :avc, :hevc, :subtitle, :teletext, :scte35, :id3, :avs, :vc1
   timeinfo: [], # {pkt_pos, pcr_pos, pcr, pts, dts}
-  ccerros: 0
+  ccerros: 0,
+  last_cc: -1,
+  pes_buf: "",
+  es_process_fn: &Parser.Probe.noop/1
 end
