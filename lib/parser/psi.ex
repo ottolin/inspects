@@ -101,15 +101,18 @@ defmodule Parser.Psi do
                   # ID3 tag
                   {_,    0x26, "ID3 " <> <<_::binary>>} -> :id3
                   # AC3 / E-AC3 in DVB
-                  {_,    0x6a, _} -> :ac3
-                  {_,    0x7a, _} -> :ac3
+                  {_,    0x6a, _}                       -> :ac3
+                  {_,    0x7a, _}                       -> :ac3
                   # Teletext
-                  {_,    0x56, _} -> :teletext
+                  {_,    0x56, _}                       -> :teletext
                   # Subtitle
-                  {_,    0x59, _} -> :subtitle
-                  {0x81, 0x81, _} -> :ac3
+                  {_,    0x59, _}                       -> :subtitle
+                  {0x81, 0x81, _}                       -> :ac3
                   # E-AC3 in ATSC
-                  {0x87, 0xcc, _} -> :ac3
+                  {0x87, 0xcc, _}                       -> :ac3
+
+                  # default case for other descriptors
+                  {_,    _,    _}                       -> :acc
                 end
             end
           end)
