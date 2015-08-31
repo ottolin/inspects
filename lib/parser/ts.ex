@@ -68,7 +68,7 @@ defmodule Parser.Ts do
     tsfile_rv = tsfile
     if pcr != -1 do
       cur_pcr = {tsfile.pos, pcr}
-      if (Enum.find(tsfile.programs, fn p -> p.pcr_pid == pid end) == nil) do
+      if Enum.any?(tsfile.programs, fn p -> p.pcr_pid == pid end) do
         # This is a rogue pcr that doesnt belongs to any program
         rp = tsfile_rv.rogue_pcr[pid]
         rp = cond do
