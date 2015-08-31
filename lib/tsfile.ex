@@ -6,12 +6,15 @@ defmodule TsFile do
   pat_num: 0,
   programs: [],
   streams: [],
+  rogue_pcr: %{}, # %{pid => [{pos, pcr}]}
   pos: 0
 end
 
 defimpl String.Chars, for: TsFile do
   def to_string(tsfile) do
     "File: " <> tsfile.fname <> "\n" <>
+    "Rogue PCRs: [" <> Enum.reduce(Map.keys(tsfile.rogue_pcr), "", fn x, acc -> acc <> Integer.to_string(x) <> "," end) <> "]\n" <>
+
     # Printing for each program and corresponding streams associated with the program
     Enum.reduce(tsfile.programs, "",
       fn (p, acc) ->
@@ -38,7 +41,6 @@ defimpl String.Chars, for: TsFile do
         end
       end
     )
-
   end
 end
 
@@ -46,7 +48,7 @@ defmodule TsProgram do
   defstruct pid: -1,
   pgm_num: -1,
   pcr_pid: -1,
-  pcr_list: [],
+  pcr_list: [], # {position, pcr}
   cur_pcr: {-1, -1} # {position, pcr}
 end
 

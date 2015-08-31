@@ -27,19 +27,33 @@ defmodule Printer do
       fn p ->
         stat_file = Path.join(output_folder, "pcr-#{p.pcr_pid}.csv")
         {:ok, f} = File.open(stat_file, [:write, :delayed_write])
-        IO.write(f, "pkt_pos, pcr, bitrate\n")
-        Enum.scan(Enum.reverse(p.pcr_list), {-1, -1},
-          fn ({pos, pcr}, {last_pos, last_pcr}) ->
-            str = "#{pos}, #{pcr}"
-            if (last_pos != -1 && last_pcr != -1) do
-              bitrate = 1504*(pos - last_pos) * 27000000 / (pcr - last_pcr)
-              str = str <> ", #{bitrate}"
-            end
-            IO.write(f, str <> "\n")
-            {pos, pcr}
-          end)
+        write_pcr_list_to_file(p.pcr_list, f)
         File.close(f)
       end
     )
+
+    # Writing rogue pcr stat
+    Enum.each(tsfile.rogue_pcr,
+      fn {pid, pcr_list} ->
+        stat_file = Path.join(output_folder, "pcr-#{pid}.csv")
+        {:ok, f} = File.open(stat_file, [:write, :delayed_write])
+        write_pcr_list_to_file(pcr_list, f)
+        File.close(f)
+      end
+    )
+  end
+
+  defp write_pcr_list_to_file(pcr_list, f) do
+    IO.write(f, "pkt_pos, pcr, bitrate\n")
+    Enum.scan(Enum.reverse(pcr_list), {-1, -1},
+      fn ({pos, pcr}, {last_pos, last_pcr}) ->
+        str = "#{pos}, #{pcr}"
+        if (last_pos != -1 && last_pcr != -1) do
+          bitrate = 1504*(pos - last_pos) * 27000000 / (pcr - last_pcr)
+          str = str <> ", #{bitrate}"
+        end
+        IO.write(f, str <> "\n")
+        {pos, pcr}
+      end)
   end
 end

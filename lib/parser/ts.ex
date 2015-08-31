@@ -68,14 +68,26 @@ defmodule Parser.Ts do
     tsfile_rv = tsfile
     if pcr != -1 do
       cur_pcr = {tsfile.pos, pcr}
-      programs = tsfile.programs
-      |> Enum.map(fn p ->
-                     cond do
-                       p.pcr_pid == pid -> %{p| cur_pcr: cur_pcr, pcr_list: [ cur_pcr | p.pcr_list]}
-                       True -> p
-                     end
-                  end)
-      tsfile_rv = %{tsfile | programs: programs}
+      if (Enum.find(tsfile.programs, fn p -> p.pcr_pid == pid end) == nil) do
+        # This is a rogue pcr that doesnt belongs to any program
+        rp = tsfile_rv.rogue_pcr[pid]
+        rp = cond do
+          rp == nil -> [cur_pcr]
+          True -> [cur_pcr | rp]
+        end
+        tsfile_rv = %{tsfile_rv | rogue_pcr: Map.put(tsfile_rv.rogue_pcr, pid, rp)}
+      else
+        programs = tsfile.programs
+        |> Enum.map(fn p ->
+          cond do
+            p.pcr_pid == pid -> %{p| cur_pcr: cur_pcr, pcr_list: [ cur_pcr | p.pcr_list]}
+            True -> p
+          end
+        end)
+
+        # Removing if it's in rogue list
+        tsfile_rv = %{tsfile_rv | programs: programs, rogue_pcr: Map.delete(tsfile_rv.rogue_pcr, pid)}
+      end
     end
 
     # TODO: cc error checking
