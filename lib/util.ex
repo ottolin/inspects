@@ -41,6 +41,34 @@ defmodule Util do
     {updated_streams, updated_programs}
   end
 
+  def update_state_pcr(_, -1, tsfile) do
+    tsfile
+  end
+
+  def update_state_pcr(pid, pcr, tsfile) do
+    cur_pcr = {tsfile.pos, pcr}
+    if Enum.any?(tsfile.programs, fn p -> p.pcr_pid == pid end) do
+      programs = tsfile.programs
+      |> Enum.map(fn p ->
+        cond do
+          p.pcr_pid == pid -> %{p| cur_pcr: cur_pcr, pcr_list: [ cur_pcr | p.pcr_list]}
+          True -> p
+        end
+      end)
+
+      # Removing if it's in rogue list
+      %{tsfile | programs: programs, rogue_pcr: Map.delete(tsfile.rogue_pcr, pid)}
+    else
+      # This is a rogue pcr that doesnt belongs to any program
+      rp = tsfile.rogue_pcr[pid]
+      rp = cond do
+        rp == nil -> [cur_pcr]
+        True -> [cur_pcr | rp]
+      end
+      %{tsfile | rogue_pcr: Map.put(tsfile.rogue_pcr, pid, rp)}
+    end
+  end
+
   def stream_to_string(s) do
     "\t\tStream: " <> Integer.to_string(s.pid) <> ", type: " <> Atom.to_string(s.type) <> "\n"
   end

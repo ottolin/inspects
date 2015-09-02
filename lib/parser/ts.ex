@@ -65,31 +65,7 @@ defmodule Parser.Ts do
   defp parse_ts_header(<<_::3, pid::13, _scramble::2, 1::1, _::1, _cc::4, adap_len::8, adap::binary-size(adap_len), _payload::binary>>, tsfile) do
     # currently we only care PCR. can extend for other fields also.
     {pcr} = parse_adap_field (adap)
-    tsfile_rv = tsfile
-    if pcr != -1 do
-      cur_pcr = {tsfile.pos, pcr}
-      if Enum.any?(tsfile.programs, fn p -> p.pcr_pid == pid end) do
-        # This is a rogue pcr that doesnt belongs to any program
-        rp = tsfile_rv.rogue_pcr[pid]
-        rp = cond do
-          rp == nil -> [cur_pcr]
-          True -> [cur_pcr | rp]
-        end
-        tsfile_rv = %{tsfile_rv | rogue_pcr: Map.put(tsfile_rv.rogue_pcr, pid, rp)}
-      else
-        programs = tsfile.programs
-        |> Enum.map(fn p ->
-          cond do
-            p.pcr_pid == pid -> %{p| cur_pcr: cur_pcr, pcr_list: [ cur_pcr | p.pcr_list]}
-            True -> p
-          end
-        end)
-
-        # Removing if it's in rogue list
-        tsfile_rv = %{tsfile_rv | programs: programs, rogue_pcr: Map.delete(tsfile_rv.rogue_pcr, pid)}
-      end
-    end
-
+    tsfile_rv = Util.update_state_pcr(pid, pcr, tsfile)
     # TODO: cc error checking
     tsfile_rv
   end
