@@ -6,8 +6,8 @@ defmodule Inspects do
   end
 
   def parse_args(args) do
-    {opt, _, _} = OptionParser.parse(args, switches: [file: :string])
-    opt
+    {opt, path, _} = OptionParser.parse(args, switches: [])
+    {opt, hd(path)}
   end
 
   def usage do
@@ -18,9 +18,9 @@ defmodule Inspects do
     usage
   end
 
-  def process(opt) do
-    IO.puts "Processing #{opt[:file]}..."
-    tsfile = %TsFile{fname: opt[:file]}
+  def process({_opt, path}) do
+    IO.puts "Processing #{path}..."
+    tsfile = %TsFile{fname: path}
 
     [final_info] = File.stream!(tsfile.fname, [:read], 188 * 5000) # taking in 188 * 5k per read
     |> Stream.scan(tsfile, &Parser.Ts.parse/2)
