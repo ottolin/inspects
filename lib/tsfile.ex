@@ -7,6 +7,7 @@ defmodule TsFile do
   programs: [],
   streams: [],
   rogue_pcr: %{}, # %{pid => [{pos, pcr}]}
+  section_residue: %{}, # %{pid => <<section_residue_buffer>>}
   pos: 0
 end
 

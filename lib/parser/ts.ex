@@ -32,6 +32,11 @@ defmodule Parser.Ts do
   end
 
   # function to extract ts payload
+  defp payload({bytes, tsfile}) do
+    # this one is a wrapper funcation for passing through the tsfile argument
+    {payload(bytes) , tsfile}
+  end
+
   defp payload(<<_::18, 0::1, 1::1, _cc::4, payload::binary>>) do
     payload
   end
@@ -83,13 +88,14 @@ defmodule Parser.Ts do
     %{tsfile | pat_num: tsfile.pat_num+1, programs: updated_programs}
   end
 
-  defp parse_data(:pmt, pid, _pusi, data, tsfile) do
-    {updated_streams, updated_programs} = data
+  defp parse_data(:pmt, pid, pusi, data, tsfile) do
+    updated_tsfile = {data, tsfile}
     |> payload
-    |> Parser.Psi.pmt
-    |> Util.get_updated_streams_and_programs(pid, tsfile)
+    |> fill_section_buf(pid, pusi)
+    |> pmt
+    |> Util.get_updated_streams_and_programs_state(pid)
 
-    %{tsfile | programs: updated_programs, streams: updated_streams}
+    updated_tsfile
   end
 
   defp parse_data(:data, pid, 0, data, tsfile) do
@@ -143,6 +149,29 @@ defmodule Parser.Ts do
     # Payload start but no pes header.
     # Section handling?
     tsfile
+  end
+
+  # function for filling up section buffer when pusi is 1
+  defp fill_section_buf({<<ptr::8, bytes::binary-size(ptr), rest::binary>>, tsfile}, pid, 1) do
+    section_buf = cat_buf(tsfile.section_residue[pid], bytes)
+    new_residue = rest
+    new_tsfile = %{tsfile | section_residue: Map.put(tsfile.section_residue, pid, new_residue)}
+    {section_buf, new_tsfile}
+  end
+
+  defp fill_section_buf({bytes, tsfile}, pid, 0) do
+    new_residue = cat_buf(tsfile.section_residue[pid], bytes)
+    new_tsfile = %{tsfile | section_residue: Map.put(tsfile.section_residue, pid, new_residue)}
+    {<<>>, new_tsfile}
+  end
+
+  defp cat_buf(nil, b), do: b
+  defp cat_buf(a, nil), do: a
+  defp cat_buf(a, b), do: a <> b
+
+  # monadic wrapper for passthing through tsfile
+  defp pmt({bytes, tsfile}) do
+    {Parser.Psi.pmt(bytes), tsfile}
   end
 
 end

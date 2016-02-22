@@ -51,6 +51,8 @@ defmodule Section do
       payload: payload,
     }
   end
+
+  def parse(_), do: :error
 end
 
 defmodule Parser.Psi do
@@ -62,14 +64,17 @@ defmodule Parser.Psi do
     get_pgm(section.payload)
   end
 
-  def pmt(<<ptr_field::8, rest::binary>>) do
-    # TODO: handling section > 1 pkt
-    <<_prev_section::binary-size(ptr_field), section_bytes::binary>> = rest
+  def pmt(<<>>), do: {-1, []}
+  def pmt(<<section_bytes::binary>>) do
+    # handling section > 1 pkt is done in upper layers
     section = Section.parse(section_bytes)
-
-    <<_::3, pcr_pid::13, _::4, pgm_info_len::12, _pgm_desc::binary-size(pgm_info_len), stream_info_bytes::binary>> = section.payload
-    {pcr_pid, get_stream(stream_info_bytes)}
-
+    case section do
+      :error ->
+        {-1, []}
+      _ ->
+        <<_::3, pcr_pid::13, _::4, pgm_info_len::12, _pgm_desc::binary-size(pgm_info_len), stream_info_bytes::binary>> = section.payload
+        {pcr_pid, get_stream(stream_info_bytes)}
+    end
   end
 
   defp get_stream_type(type, desc_list) do

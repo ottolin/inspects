@@ -22,7 +22,8 @@ defmodule Util do
     )
   end
 
-  def get_updated_streams_and_programs({pcr_pid, stream_list}, pmt_pid, tsfile) do
+  def get_updated_streams_and_programs_state({{-1, []}, tsfile}, _pmt_pid), do: tsfile
+  def get_updated_streams_and_programs_state({{pcr_pid, stream_list}, tsfile}, pmt_pid) do
     updated_streams = stream_list
     |> Enum.filter(fn {pid, _stream_type} ->
       not pid in Enum.map(tsfile.streams, fn stm -> stm.pid end)
@@ -38,7 +39,8 @@ defmodule Util do
           True -> p
         end
       end)
-    {updated_streams, updated_programs}
+
+    %{tsfile | programs: updated_programs, streams: updated_streams}
   end
 
   def update_state_pcr(_, -1, tsfile) do
